@@ -1,8 +1,20 @@
+# ==UserScript==
+# @name         好大学在线 助手
+# @namespace    https://github.com/ShenHongFei/cnmooc-assistant
+# @version      0.1
+# @description  cnmooc-assistant
+# @author       沈鸿飞
+# @match        http://www.cnmooc.org/study/initplay/*.mooc
+# @match        http://www.cnmooc.org/study/unit/*.mooc
+# @require      file://E:/SDK/cnmooc-assistant/index.js
+# @run-at       document-idle
+# ==/UserScript==
+
 sleep=(ms)->
     new Promise (resolve)->setTimeout(resolve,ms)
-
-# 满分批阅当前
-mark=()->
+    
+# 满分批阅当前 mark()
+mark=->
     $('input[id^=quiz_]').each (i,e)->
         max_point=e.className.match(/max\[(\d+)\]/)[1]
         e.setAttribute('value',max_point)
@@ -13,17 +25,184 @@ mark=()->
     await sleep(200)
     $("input[value='确定']").click()
 
-# 满分批阅所有
-mark_all=()->
+# 满分批阅所有 mark_all()
+mark_all=->
     $('#gotoReviewSubmitBtn').click()
     for i in [1..3]
         await sleep(700)
         mark()
+
+# 完成该项
+complete_item=->
+    updateStudyOver()
+
+# 解锁视频进度
+unblock_video_progress=->
+    $('#isOver').val(2)
+    eval($(".video-show script").html())
+
+# 暂停计时
+pause_quiz_timer=->
+    if typeof unsafeWindow!='undefined'
+        unsafeWindow.useTimeFlag=false
+    else useTimeFlag=false
+
+# 最小option_id
+option_id_0=null
+answers=null
+questions=null
+get_quiz_answers=->
+    option_id_0=parseInt $('[option_id]').attr('option_id')
+    # 初始化页面问题
+    questions=(JSON.parse question for question in $('#exam_paper').quiz().getPractice())
+    
+    # 修改自 doSubmitExam_ajax，
+    test_answer=(questions)->
+        #处理每道题计时
+        _quizUseTimeRecord[_quizIdRecord]=_quizUseTimeRecord[_quizIdRecord] or 0
+        _quizUseTimeRecord[_quizIdRecord]=parseInt(_quizUseTimeRecord[_quizIdRecord])+_quizUseTime
+        user_quizs=(JSON.stringify question for question in questions)
+        reSubmit=$('#reSubmit').val()
+        gradeId=$('#gradeId').val()
+        userQuiz2=[]
+        totalScore=0
+        allRightFlag=true
+        i=0
+        while i<user_quizs.length
+            user_Quiz=JSON.parse(user_quizs[i])
+            user_Quiz['useTime']=_quizUseTimeRecord[user_Quiz['quizId']]
+            _quizUseTimeRecord[user_Quiz['quizId']]=0
+            
+            userQuiz2.push JSON.stringify(user_Quiz)
+            score=parseInt(user_Quiz['markQuizScore'])
+            totalScore+=score
+            if score==0
+                allRightFlag=false
+            i++
+        if allRightFlag
+            totalScore=10000
+            
+        user_quizs=userQuiz2
+        console.log(user_quizs)
+        ret_data=await $.when $.ajax
+            url:CONTEXTPATH+'/examSubmit/7681/saveExam/1/'+examPaperId+'/'+examSubmitId+'.mooc?testPaperId='+examTestPaperId
+            type:'post'
+            data:
+                gradeId:gradeId
+                reSubmit:reSubmit
+                submitquizs:user_quizs
+                submitFlag:0
+                useTime:1
+                totalScore:totalScore
+                testPaperId:examTestPaperId
+            dataType:'json'
+            success:(data) -> if !data.successFlag then throw Error(data.successFlag=false)
+            error:-> console.log('test_answer error')
+        JSON.parse ret_data.examSubmit.submitContent
+    
+    # 枚举、测试、更新答案
+    answers={}
+    for oi in [1,2,4,8,3,5,6,7,9,10,11,12,13,14,15]
+        option_id_flags=[]
+        for i in [0..3]
+            option_id_flags.push (oi<<i&0b1000)==0b1000
+        # 检测已有正确答案，对每一题生成答案，设置userAnswer
+        for question,qi in questions
+            perfect_answer=answers[question.quizId]
+            if perfect_answer
+                question.userAnswer=perfect_answer.join(',')
+            else
+                current_round_option_ids=[]
+                option_id_from=option_id_0+qi*4
+                for i in [0..3]
+                    current_round_option_ids.push option_id_from+i if option_id_flags[i]
+                question.userAnswer=current_round_option_ids.join(',')
+        console.log questions
+        # 枚举的答案准备完成，开始测试
+        test_result=await test_answer(questions)
+        for result in test_result
+            result=JSON.parse(result)
+            if result.markResult
+                # perfect_options=(parseInt option for option in result.userAnswer.split(','))
+                answers[result.quizId]=result.userAnswer.split(',')
+    console.log answers
+    answers
+
+# 查看习题答案
+print_answers=->
+    await get_quiz_answers() if !answers
+    pretty_options=''
+    for question,qi in questions
+        option_id_from=option_id_0+qi*4
+        x=(String.fromCharCode('A'.charCodeAt(0)+parseInt(option)-option_id_from) for option in answers[question.quizId])
+        pretty_options+="第#{qi+1}题：#{x.join(',')}\n"
+    console.log pretty_options
+    alert pretty_options
+    return
+
+# 自动完成习题
+auto_fill=->
+    await get_quiz_answers() if !answers
+    answer_ids=[]
+    for k,v of answers
+        answer_ids=answer_ids.concat v
+    # todo:多选题再次点击会取消选择
+    $(".t-option").filter (i,e)-> (parseInt(option_id_0)+i).toString() in answer_ids
+        .find('[class|="input"]')
+        .click()
+    return
+
+assistant_api=
+    '解锁视频进度':unblock_video_progress
+    '完成该项'    :complete_item
+    '暂停答题计时':pause_quiz_timer
+    '自动完成习题':auto_fill
+    '查看习题答案':print_answers
+
+# userscript 环境
+if typeof unsafeWindow!='undefined'
+    # 暴露assistant接口
+    unsafeWindow.assistant={}
+    for name,fun of assistant_api
+        unsafeWindow.assistant[fun.name]=fun
+
+    # 返回课程主页改为返回导航
+    $('#backCourse').contents().last().replaceWith('返回导航')
+    $('#backCourse').off('click')
+    $("#backCourse").on 'click', ->
+        location.href = CONTEXTPATH + "/portal/session/unitNavigation/" + $("#courseOpenId").val() + ".mooc"
+    
+    # 助手界面显示
+    assistant_div=document.createElement('div')
+    assistant_div.id='assistant'
+    $('.main-scroll')[0].prepend(assistant_div)
+    
+    # 助手界面添加按钮
+    add_button=(text,fun)->
+        btn=document.createElement('button')
+        btn.textContent=text
+        btn.onclick=fun
+        # todo:优雅的样式设置
+        btn.style='margin:5px;padding:5px'
+        assistant_div.appendChild(btn)
         
-
-# 完成视频等项目
-complete_item=()->
-    updateExamStudyOver()
+    for name,fun of assistant_api
+        add_button(name,fun)
+        
+    # tab切换
+    $('.tab-inner').on 'click',->
+        # todo:智能判断可用功能
+        console.log this
     
-
-    
+#router=
+#    10:video_helper_init
+##    20:pdf_helper # pdf页面
+##    50:quiz_helper # 选择题
+#    
+#router[$('#itemType').val()]()
+#
+#async_ajax_test=->
+#    ajax_ret=await $.when $.ajax
+#        url:'http://www.cnmooc.org/study/unit/197091.mooc'
+#        success:->console.log 'success callback'
+#    console.log ajax_ret.length

@@ -2,37 +2,19 @@
 
 ## 功能
 
-1.  获取选择题答案
+![demo1](preview/demo1.png)
 
-    IDEA COMES FROM @[张单旸晖](https://github.com/zsyh)，练习页面暂存后返回的请求中有答案对错的判断。
 
-    ​
 
-    示例(console output)
+关于获取选择题答案，IDEA COMES FROM @[张单旸晖](https://github.com/zsyh)，练习页面暂存后返回的请求中有答案对错的判断。
 
-    第1题：A
 
-    第2题：B
 
-    第3题：A
+### 安装
 
-    第4题：C
+1.  安装Tampermonkey插件 [http://www.cnplugins.com/office/tampermonkey/](http://www.cnplugins.com/office/tampermonkey/)
+2.  访问 [https://greasyfork.org/zh-CN/scripts/35595-%E5%A5%BD%E5%A4%A7%E5%AD%A6%E5%9C%A8%E7%BA%BF-%E5%8A%A9%E6%89%8B](https://greasyfork.org/zh-CN/scripts/35595-%E5%A5%BD%E5%A4%A7%E5%AD%A6%E5%9C%A8%E7%BA%BF-%E5%8A%A9%E6%89%8B)  安装脚本。
+3.  打开好大学在线即可使用。
 
-    第5题：A,B,C,D
 
-    第6题：B
-
-    第7题：A,B,C
-
-    第8题：A
-
-    第9题：A,B,C
-
-    第10题：A,B
-
-2.  完成视频播放
-
-3.  解锁视频进度限制
-
-    ​
 
