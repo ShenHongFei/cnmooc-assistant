@@ -9,9 +9,6 @@
 # @require      file://E:/SDK/cnmooc-assistant/index.js
 # @run-at       document-idle
 # ==/UserScript==
-
-sleep=(ms)->
-    new Promise (resolve)->setTimeout(resolve,ms)
     
 # 满分批阅当前 mark()
 mark=->
@@ -47,60 +44,62 @@ pause_quiz_timer=->
         unsafeWindow.useTimeFlag=false
     else useTimeFlag=false
 
-# 最小option_id
-option_id_0=null
+# answers={question.quizId:[options(string)]}
 answers=null
 questions=null
+options=null
+
+# async 修改自 doSubmitExam_ajax
+test_answer=(questions)->
+    #处理每道题计时
+    _quizUseTimeRecord[_quizIdRecord]=_quizUseTimeRecord[_quizIdRecord] or 0
+    _quizUseTimeRecord[_quizIdRecord]=parseInt(_quizUseTimeRecord[_quizIdRecord])+_quizUseTime
+    user_quizs=(JSON.stringify question for question in questions)
+    reSubmit=$('#reSubmit').val()
+    gradeId=$('#gradeId').val()
+    userQuiz2=[]
+    totalScore=0
+    allRightFlag=true
+    i=0
+    while i<user_quizs.length
+        user_Quiz=JSON.parse(user_quizs[i])
+        user_Quiz['useTime']=_quizUseTimeRecord[user_Quiz['quizId']]
+        _quizUseTimeRecord[user_Quiz['quizId']]=0
+        
+        userQuiz2.push JSON.stringify(user_Quiz)
+        score=parseInt(user_Quiz['markQuizScore'])
+        totalScore+=score
+        if score==0
+            allRightFlag=false
+        i++
+    if allRightFlag
+        totalScore=10000
+        
+    user_quizs=userQuiz2
+    console.log(user_quizs)
+    ret_data=await $.when $.ajax
+        url:CONTEXTPATH+'/examSubmit/7681/saveExam/1/'+examPaperId+'/'+examSubmitId+'.mooc?testPaperId='+examTestPaperId
+        type:'post'
+        data:
+            gradeId:gradeId
+            reSubmit:reSubmit
+            submitquizs:user_quizs
+            submitFlag:0
+            useTime:1
+            totalScore:totalScore
+            testPaperId:examTestPaperId
+        dataType:'json'
+        success:(data) -> if !data.successFlag then throw Error(data.successFlag=false)
+        error:-> console.log('test_answer error')
+    JSON.parse ret_data.examSubmit.submitContent
+
+# async
 get_quiz_answers=->
-    option_id_0=parseInt $('[option_id]').attr('option_id')
     # 初始化页面问题
     questions=(JSON.parse question for question in $('#exam_paper').quiz().getPractice())
     
-    # 修改自 doSubmitExam_ajax，
-    test_answer=(questions)->
-        #处理每道题计时
-        _quizUseTimeRecord[_quizIdRecord]=_quizUseTimeRecord[_quizIdRecord] or 0
-        _quizUseTimeRecord[_quizIdRecord]=parseInt(_quizUseTimeRecord[_quizIdRecord])+_quizUseTime
-        user_quizs=(JSON.stringify question for question in questions)
-        reSubmit=$('#reSubmit').val()
-        gradeId=$('#gradeId').val()
-        userQuiz2=[]
-        totalScore=0
-        allRightFlag=true
-        i=0
-        while i<user_quizs.length
-            user_Quiz=JSON.parse(user_quizs[i])
-            user_Quiz['useTime']=_quizUseTimeRecord[user_Quiz['quizId']]
-            _quizUseTimeRecord[user_Quiz['quizId']]=0
-            
-            userQuiz2.push JSON.stringify(user_Quiz)
-            score=parseInt(user_Quiz['markQuizScore'])
-            totalScore+=score
-            if score==0
-                allRightFlag=false
-            i++
-        if allRightFlag
-            totalScore=10000
-            
-        user_quizs=userQuiz2
-        console.log(user_quizs)
-        ret_data=await $.when $.ajax
-            url:CONTEXTPATH+'/examSubmit/7681/saveExam/1/'+examPaperId+'/'+examSubmitId+'.mooc?testPaperId='+examTestPaperId
-            type:'post'
-            data:
-                gradeId:gradeId
-                reSubmit:reSubmit
-                submitquizs:user_quizs
-                submitFlag:0
-                useTime:1
-                totalScore:totalScore
-                testPaperId:examTestPaperId
-            dataType:'json'
-            success:(data) -> if !data.successFlag then throw Error(data.successFlag=false)
-            error:-> console.log('test_answer error')
-        JSON.parse ret_data.examSubmit.submitContent
-    
     # 枚举、测试、更新答案
+    options=$('[option_id]').map (i,e)-> e.getAttribute('option_id')
     answers={}
     for oi in [1,2,4,8,3,5,6,7,9,10,11,12,13,14,15]
         option_id_flags=[]
@@ -113,9 +112,9 @@ get_quiz_answers=->
                 question.userAnswer=perfect_answer.join(',')
             else
                 current_round_option_ids=[]
-                option_id_from=option_id_0+qi*4
+                # option_id 并非连续
                 for i in [0..3]
-                    current_round_option_ids.push option_id_from+i if option_id_flags[i]
+                    current_round_option_ids.push options[qi*4+i] if option_id_flags[i]
                 question.userAnswer=current_round_option_ids.join(',')
         console.log questions
         # 枚举的答案准备完成，开始测试
@@ -128,16 +127,16 @@ get_quiz_answers=->
     console.log answers
     answers
 
-# 查看习题答案
+# async 查看习题答案
 print_answers=->
     await get_quiz_answers() if !answers
     pretty_options=''
     for question,qi in questions
-        option_id_from=option_id_0+qi*4
+        option_id_from=options[qi*4]
         x=(String.fromCharCode('A'.charCodeAt(0)+parseInt(option)-option_id_from) for option in answers[question.quizId])
         pretty_options+="第#{qi+1}题：#{x.join(',')}\n"
-    console.log pretty_options
-    alert pretty_options
+    console.log(pretty_options)
+    alert(pretty_options)
     return
 
 # 自动完成习题
@@ -147,7 +146,7 @@ auto_fill=->
     for k,v of answers
         answer_ids=answer_ids.concat v
     # todo:多选题再次点击会取消选择
-    $(".t-option").filter (i,e)-> (parseInt(option_id_0)+i).toString() in answer_ids
+    $("[option_id]").filter (i,e)->e.getAttribute('option_id') in answer_ids
         .find('[class|="input"]')
         .click()
     return
