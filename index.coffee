@@ -41,7 +41,7 @@ unblock_video_progress=->
 
 # 暂停计时
 pause_quiz_timer=->
-    if typeof unsafeWindow!='undefined'
+    if unsafeWindow?
         unsafeWindow.useTimeFlag=false
     else useTimeFlag=false
 
@@ -160,7 +160,7 @@ assistant_api=
     '查看习题答案':print_answers
 
 # userscript 环境
-if typeof unsafeWindow!='undefined'
+if unsafeWindow?
     # 暴露assistant接口
     unsafeWindow.assistant={}
     for name,fun of assistant_api
