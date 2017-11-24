@@ -7,8 +7,9 @@
 # @version      2017.11.24.03.19
 # @match        http://www.cnmooc.org/study/initplay/*.mooc
 # @match        http://www.cnmooc.org/study/unit/*.mooc
-# @require      file://E:/SDK/cnmooc-assistant/index.js
+# @match        http://www.cnmooc.org/examTest/stuExamList/*.mooc
 # @run-at       document-idle
+# @license      MIT License
 # ==/UserScript==
     
 # 满分批阅当前 mark()
