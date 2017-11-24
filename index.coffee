@@ -1,9 +1,10 @@
 # ==UserScript==
 # @name         好大学在线 助手
 # @namespace    https://github.com/ShenHongFei/cnmooc-assistant
-# @version      0.1
-# @description  cnmooc-assistant
+# @homepage     https://github.com/ShenHongFei/cnmooc-assistant
 # @author       沈鸿飞
+# @description  .
+# @version      2017.11.24.03.19
 # @match        http://www.cnmooc.org/study/initplay/*.mooc
 # @match        http://www.cnmooc.org/study/unit/*.mooc
 # @require      file://E:/SDK/cnmooc-assistant/index.js
