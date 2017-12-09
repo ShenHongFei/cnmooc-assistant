@@ -11,26 +11,28 @@
 # @run-at       document-idle
 # @license      MIT License
 # ==/UserScript==
-    
+
 # 满分批阅当前 mark()
+# 使用方法：在console中调用assistant.mark()
 mark=->
+    sleep=(ms)->
+        new Promise (resolve)->setTimeout(resolve,ms)
+        
     $('input[id^=quiz_]').each (i,e)->
         max_point=e.className.match(/max\[(\d+)\]/)[1]
         e.setAttribute('value',max_point)
-    await sleep(200)
-    $('#submitReviewBtn').click()
-    await sleep(200)
+    if $('#reviewSubmitDiv').css('display')!='none'
+        $('#submitReviewBtn').click()
+    else
+        $('#gotoReviewSubmitBtn').click()
+    await sleep(1000)
     $("input[value='提交互评']").click()
-    await sleep(200)
+    await sleep(2000)
+    console.log '完成一次批阅'
     $("input[value='确定']").click()
 
-# 满分批阅所有 mark_all()
-mark_all=->
-    $('#gotoReviewSubmitBtn').click()
-    for i in [1..3]
-        await sleep(700)
-        mark()
-
+# 修改doSubExam逻辑可以在跳转是插入自己逻辑
+    
 # 完成该项
 complete_item=->
     updateStudyOver()
@@ -160,13 +162,18 @@ assistant_api=
     '自动完成习题':auto_fill
     '查看习题答案':print_answers
 
+fold_unit_nav=->
+    $('.tr-chapter').click()
+    
+
+    
 # userscript 环境
 if unsafeWindow?
     # 暴露assistant接口
     unsafeWindow.assistant={}
     for name,fun of assistant_api
         unsafeWindow.assistant[fun.name]=fun
-
+    unsafeWindow.assistant.mark=mark
     # 返回课程主页改为返回导航
     $('#backCourse').contents().last().replaceWith('返回导航')
     $('#backCourse').off('click')
@@ -176,7 +183,7 @@ if unsafeWindow?
     # 助手界面显示
     assistant_div=document.createElement('div')
     assistant_div.id='assistant'
-    $('.main-scroll')[0].prepend(assistant_div)
+    $('.main-scroll').prepend(assistant_div)
     
     # 助手界面添加按钮
     add_button=(text,fun)->
@@ -194,16 +201,15 @@ if unsafeWindow?
     $('.tab-inner').on 'click',->
         # todo:智能判断可用功能
         console.log this
+        
+    fold_unit_nav()
     
+    unsafeWindow.doSubExam=doSubExam
+        
 #router=
 #    10:video_helper_init
 ##    20:pdf_helper # pdf页面
 ##    50:quiz_helper # 选择题
 #    
 #router[$('#itemType').val()]()
-#
-#async_ajax_test=->
-#    ajax_ret=await $.when $.ajax
-#        url:'http://www.cnmooc.org/study/unit/197091.mooc'
-#        success:->console.log 'success callback'
-#    console.log ajax_ret.length
+
