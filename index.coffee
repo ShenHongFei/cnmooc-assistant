@@ -4,7 +4,7 @@
 # @homepage     https://github.com/ShenHongFei/cnmooc-assistant
 # @author       沈鸿飞
 # @description  .
-# @version      2017.11.24.03.19
+# @version      2017.12.09
 # @match        http://www.cnmooc.org/study/initplay/*.mooc
 # @match        http://www.cnmooc.org/study/unit/*.mooc
 # @match        http://www.cnmooc.org/examTest/stuExamList/*.mooc
@@ -165,8 +165,6 @@ assistant_api=
 fold_unit_nav=->
     $('.tr-chapter').click()
     
-
-    
 # userscript 环境
 if unsafeWindow?
     # 暴露assistant接口
@@ -174,6 +172,7 @@ if unsafeWindow?
     for name,fun of assistant_api
         unsafeWindow.assistant[fun.name]=fun
     unsafeWindow.assistant.mark=mark
+    
     # 返回课程主页改为返回导航
     $('#backCourse').contents().last().replaceWith('返回导航')
     $('#backCourse').off('click')

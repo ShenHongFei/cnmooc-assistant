@@ -3,6 +3,12 @@
 ## 功能
 ![demo](preview/demo.jpg)
 
++   满分批阅
+
+    显示评分界面时在控制台输入 assistant.mark()
+
+    ​
+
 ps. idea partially comes from @[zsyh](https://github.com/zsyh)
 
 ## 安装
